@@ -8,58 +8,61 @@ import torch
 class TSDFVolume:
   """Volumetric TSDF Fusion of RGB-D Images.
   """
-  def __init__(self, vol_bnds, voxel_size, integrate_func):
+  def __init__(self, vol_bnds, voxel_size:float, useGPU:bool = None):
     """Constructor.
 
     Args:
       vol_bnds (ndarray): An ndarray of shape (3, 2). Specifies the
         xyz bounds (min/max) in meters.
       voxel_size (float): The volume discretization in meters.
+      useGpu (bool): Some implementations handle both CPU and GPU system.
     """
     vol_bnds = np.asarray(vol_bnds)
     assert vol_bnds.shape == (3, 2), "[!] `vol_bnds` should be of shape (3, 2)."
 
-    if torch.cuda.is_available():
-      self.device = torch.device("cuda")
-    else:
-      print("[!] No GPU detected. Defaulting to CPU.")
-      self.device = torch.device("cpu")
-
     # Define voxel volume parameters
-    self._vol_bnds = torch.from_numpy(vol_bnds).float().to(self.device)
+    self._vol_bnds = vol_bnds
     self._voxel_size = float(voxel_size)
     self._sdf_trunc = 5 * self._voxel_size
     self._const = 256*256
-    self._integrate_func = integrate_func
 
-    # Adjust volume bounds
-    self._vol_dim = torch.ceil((self._vol_bnds[:, 1] - self._vol_bnds[:, 0]) / self._voxel_size).long()
-    self._vol_bnds[:, 1] = self._vol_bnds[:, 0] + (self._vol_dim * self._voxel_size)
-    self._vol_origin = self._vol_bnds[:, 0]
-    self._num_voxels = torch.prod(self._vol_dim).item()
-
-    # Get voxel grid coordinates
-    xv, yv, zv = torch.meshgrid(
-      torch.arange(0, self._vol_dim[0]),
-      torch.arange(0, self._vol_dim[1]),
-      torch.arange(0, self._vol_dim[2]),
-    )
-    self._vox_coords = torch.stack([xv.flatten(), yv.flatten(), zv.flatten()], dim=1).long().to(self.device)
-
-    # Convert voxel coordinates to world coordinates
-    self._world_c = self._vol_origin + (self._voxel_size * self._vox_coords)
-    self._world_c = torch.cat([
-      self._world_c, torch.ones(len(self._world_c), 1, device=self.device)], dim=1)
-
-    self.reset()
+    # Adjust volume bounds and ensure C-order contiguous
+    self._vol_dim = np.ceil((self._vol_bnds[:, 1] - self._vol_bnds[:, 0]) / self._voxel_size).copy(order='C').astype(int)
+    self._vol_bnds[:, 1] = self._vol_bnds[:, 0] + self._vol_dim * self._voxel_size
+    self._vol_origin = self._vol_bnds[:, 0].copy(order='C').astype(np.float32)
+    self._num_voxels = np.prod(self._vol_dim)
 
     print("[*] voxel volume: {} x {} x {}".format(*self._vol_dim))
     print("[*] num voxels: {:,}".format(self._num_voxels))
 
-  def reset(self):
-    self._tsdf_vol = torch.ones(*self._vol_dim).to(self.device)
-    self._weight_vol = torch.zeros(*self._vol_dim).to(self.device)
-    self._color_vol = torch.zeros(*self._vol_dim).to(self.device)
+    # Initialize pointers to voxel volume in CPU memory
+    self._tsdf_vol = np.ones(self._vol_dim).astype(np.float32)
+    # for computing the cumulative moving average of observations per voxel
+    self._weight_vol = np.zeros(self._vol_dim).astype(np.float32)
+    self._color_vol = np.zeros(self._vol_dim).astype(np.float32)
+
+    self.prepare()
+
+  def initVoxCoords(self):
+    # Get voxel grid coordinates
+    xv, yv, zv = np.meshgrid(
+      range(self._vol_dim[0]),
+      range(self._vol_dim[1]),
+      range(self._vol_dim[2]),
+      indexing='ij'
+    )
+    self._vox_coords = np.concatenate([
+      xv.reshape(1, -1),
+      yv.reshape(1, -1),
+      zv.reshape(1, -1)
+    ], axis=0).astype(int).T
+
+  def initWorldCoords(self):
+    # Convert voxel coordinates to world coordinates
+    # In Andy repo, this is done in integrate
+    self._world_c = self._vol_origin + (self._voxel_size * self._vox_coords)
+    self._world_c = np.concatenate([self._world_c, np.ones((len(self._world_c), 1))], axis=1)
+
 
   def integrate(self, color_im, depth_im, cam_intr, cam_pose, obs_weight):
     """Integrate an RGB-D frame into the TSDF volume.
@@ -70,38 +73,19 @@ class TSDFVolume:
       cam_pose (ndarray): The camera pose (i.e. extrinsics) of shape (4, 4).
       obs_weight (float): The weight to assign to the current observation.
     """
-    cam_pose = torch.from_numpy(cam_pose).float().to(self.device)
-    cam_intr = torch.from_numpy(cam_intr).float().to(self.device)
-    color_im = torch.from_numpy(color_im).float().to(self.device)
-    depth_im = torch.from_numpy(depth_im).float().to(self.device)
-    im_h, im_w = depth_im.shape
-    weight_vol, tsdf_vol, color_vol = self._integrate_func(
-      color_im,
-      depth_im,
-      cam_intr,
-      cam_pose,
-      obs_weight,
-      self._world_c,
-      self._vox_coords,
-      self._weight_vol,
-      self._tsdf_vol,
-      self._color_vol,
-      self._sdf_trunc,
-      im_h, im_w,
-    )
-    self._weight_vol = weight_vol
-    self._tsdf_vol = tsdf_vol
-    self._color_vol = color_vol
+    raise Exception('must be implemented')
+
 
   def extract_point_cloud(self):
     """Extract a point cloud from the voxel volume.
     """
-    tsdf_vol = self._tsdf_vol.cpu().numpy()
-    color_vol = self._color_vol.cpu().numpy()
-    vol_origin = self._vol_origin.cpu().numpy()
 
-    # Marching cubes
-    verts = measure.marching_cubes_lewiner(tsdf_vol, level=0)[0]
+    tsdf_vol = self._tsdf_vol
+    color_vol =  self._color_vol
+    vol_origin = self._vol_origin
+
+    # Marching cubes#
+    verts = measure.marching_cubes(tsdf_vol, level=0, method='lewiner')[0]
     verts_ind = np.round(verts).astype(int)
     verts = verts*self._voxel_size + vol_origin
 
@@ -119,12 +103,12 @@ class TSDFVolume:
   def extract_triangle_mesh(self):
     """Extract a triangle mesh from the voxel volume using marching cubes.
     """
-    tsdf_vol = self._tsdf_vol.cpu().numpy()
-    color_vol = self._color_vol.cpu().numpy()
-    vol_origin = self._vol_origin.cpu().numpy()
+    tsdf_vol = self._tsdf_vol
+    color_vol = self._color_vol
+    vol_origin = self._vol_origin
 
     # Marching cubes
-    verts, faces, norms, vals = measure.marching_cubes_lewiner(tsdf_vol, level=0)
+    verts, faces, norms, vals = measure.marching_cubes(tsdf_vol, level=0, method='lewiner')
     verts_ind = np.round(verts).astype(int)
     verts = verts*self._voxel_size + vol_origin
 

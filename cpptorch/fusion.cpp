@@ -35,12 +35,12 @@ std::vector<torch::Tensor> fusion_integrate(
   // skip pixels and voxels outside view frustum
   auto mask_pix = (pix_x >= 0) * (pix_x < im_width) * (pix_y >= 0) * (pix_y < im_height) * (pix_z > 0);
   mask_pix = mask_pix.squeeze();
-  auto pix_x_valid = pix_x.index(mask_pix);
-  auto pix_y_valid = pix_y.index(mask_pix);
-  auto pix_z_valid = pix_z.index(mask_pix);
-  auto vox_x_valid = coords_vox.narrow(1, 0, 1).squeeze().index(mask_pix);
-  auto vox_y_valid = coords_vox.narrow(1, 1, 1).squeeze().index(mask_pix);
-  auto vox_z_valid = coords_vox.narrow(1, 2, 1).squeeze().index(mask_pix);
+  auto pix_x_valid = pix_x.index({mask_pix});
+  auto pix_y_valid = pix_y.index({mask_pix});
+  auto pix_z_valid = pix_z.index({mask_pix});
+  auto vox_x_valid = coords_vox.narrow(1, 0, 1).squeeze().index({mask_pix});
+  auto vox_y_valid = coords_vox.narrow(1, 1, 1).squeeze().index({mask_pix});
+  auto vox_z_valid = coords_vox.narrow(1, 2, 1).squeeze().index({mask_pix});
 
   // skip voxels with invalid depth values or outside truncation
   auto depth_val = depth_im.index({pix_y_valid, pix_x_valid});
@@ -48,10 +48,10 @@ std::vector<torch::Tensor> fusion_integrate(
   auto dist = torch::clamp_max(depth_diff / sdf_trunc, 1.0);
   auto mask_vox = (depth_val > 0) * (depth_diff >= -sdf_trunc);
   mask_vox = mask_vox.squeeze();
-  vox_x_valid = vox_x_valid.index(mask_vox);
-  vox_y_valid = vox_y_valid.index(mask_vox);
-  vox_z_valid = vox_z_valid.index(mask_vox);
-  auto valid_dist = dist.index(mask_vox);
+  vox_x_valid = vox_x_valid.index({mask_vox});
+  vox_y_valid = vox_y_valid.index({mask_vox});
+  vox_z_valid = vox_z_valid.index({mask_vox});
+  auto valid_dist = dist.index({mask_vox});
 
   // integrate sdf
   auto w_old = weight_vol.index({vox_x_valid, vox_y_valid, vox_z_valid});
@@ -65,7 +65,7 @@ std::vector<torch::Tensor> fusion_integrate(
   auto old_b = torch::floor(old_color / const_val);
   auto old_g = torch::floor((old_color-old_b*const_val) / 256);
   auto old_r = old_color - old_b*const_val - old_g*256;
-  auto new_color = color_im.index({pix_y_valid.index(mask_vox), pix_x_valid.index(mask_vox)});
+  auto new_color = color_im.index({pix_y_valid.index({mask_vox}), pix_x_valid.index({mask_vox})});
   auto new_b = torch::floor(new_color / const_val);
   auto new_g = torch::floor((new_color - new_b*const_val) / 256);
   auto new_r = new_color - new_b*const_val - new_g*256;

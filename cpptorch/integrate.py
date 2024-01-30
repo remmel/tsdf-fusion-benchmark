@@ -1,7 +1,16 @@
 import torch
 import fusion_cpp
 
+import pytorch_
+from pytorch_.integrate import TSDFVolumeChild as TSDFVolumePytorch
 
+
+class TSDFVolumeChild(TSDFVolumePytorch):
+  using='Using PyTorch C++'
+
+  def prepare(self):
+    super().prepare()
+    pytorch_.integrate.integrate = integrate
 def integrate(
   color_im,
   depth_im,

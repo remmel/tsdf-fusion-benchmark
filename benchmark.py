@@ -1,7 +1,6 @@
 import argparse
 import time
 
-import open3d as o3d
 import cv2
 import numpy as np
 
@@ -16,18 +15,25 @@ if platform.system() == "Darwin":
 TIME_SCALES = {'s': 1, 'ms': 1000, 'us': 1000000}
 
 
+EXAMPLE_CHOICES = ['pycuda', 'pytorch', 'cpptorch', 'pytorchjit', 'cuda', 'numpy', 'nestedloop', 'cudanumba']
 def main(args):
-  if args.example == 'cpp':
-    print("Using PyTorch CPP.")
-    from cpp.integrate import integrate
-  elif args.example == 'jit':
-    print("Using PyTorch JIT.")
-    from jit.integrate import integrate
-  elif args.example == 'py':
-    print("Using vanilla PyTorch.")
-    from python.integrate import integrate
+  if args.example == 'cpptorch':
+    from cpptorch.integrate import TSDFVolumeChild
+  elif args.example == 'pytorchjit':
+    from pytorchjit.integrate import TSDFVolumeChild
+  elif args.example == 'pytorch':
+    from pytorch_.integrate import TSDFVolumeChild
+  elif args.example == 'numpy':
+    from numpy_.integrate import TSDFVolumeChild
+  elif args.example == 'nestedloop':
+    from nestedloop.integrate import TSDFVolumeChild
+  elif args.example == 'cudanumba':
+    from cudanumba.integrate import TSDFVolumeChild
+  elif args.example == 'pycuda':
+    from pycuda_.integrate import TSDFVolumeChild
   else:
-    pass
+    raise Exception('unknown example: %s' % args.example)
+
 
   # ======================================================================================================== #
   # (Optional) This is an example of how to compute the 3D bounds
@@ -53,7 +59,8 @@ def main(args):
 
   # Initialize voxel volume
   print("Initializing voxel volume...")
-  tsdf_vol = fusion.TSDFVolume(vol_bnds, 0.02, integrate)
+  tsdf_vol = TSDFVolumeChild(vol_bnds, 0.02, args.gpu)
+  print(tsdf_vol.using)
 
   # ======================================================================================================== #
   # Integrate
@@ -62,7 +69,7 @@ def main(args):
   t0_elapse = time.time()
   times = []
   for i in range(n_imgs):
-    print("Fusing frame %d/%d"%(i+1, n_imgs))
+    print("Fusing frame {:02d}/{:d}".format(i+1, n_imgs), end="")
 
     # Read RGB-D image and camera pose
     color_image = cv2.cvtColor(cv2.imread("data/frame-%06d.color.jpg"%(i)), cv2.COLOR_BGR2RGB)
@@ -76,12 +83,16 @@ def main(args):
     tsdf_vol.integrate(color_image, depth_im, cam_intr, cam_pose, obs_weight=1.)
     toc = time.time()
     times.append(toc-tic)
+    print(" - {:.3f} s".format(toc-tic))
 
   fps = n_imgs / (time.time() - t0_elapse)
   print("Average FPS: {:.2f}".format(fps))
 
   times = [t*TIME_SCALES[args.scale] for t in times]
-  print("Average integration time: {:.3f} {}".format(np.mean(times), args.scale))
+  print("Integration time: avg: {:.3f} {} - min: {:.3f} - avg(w/o 1st): {:.3f}".format(np.mean(times), args.scale, np.min(times), np.mean(times[1:])))
+
+  tsdf_vol.finalize()
+
 
   # Extract pointcloud
   point_cloud = tsdf_vol.extract_point_cloud()
@@ -95,7 +106,8 @@ def main(args):
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument('example', choices=['pycuda', 'py', 'cpp', 'jit', 'cuda'])
+  parser.add_argument('example', choices=EXAMPLE_CHOICES)
   parser.add_argument('--scale', choices=['s', 'ms', 'us'], default='s')
+  parser.add_argument('--gpu', action=argparse.BooleanOptionalAction, default=True)
   args = parser.parse_args()
   main(args)
