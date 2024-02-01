@@ -5,9 +5,13 @@ from skimage import measure
 import torch
 
 
-class TSDFVolume:
+class TSDFVolumeBase:
   """Volumetric TSDF Fusion of RGB-D Images.
   """
+
+  using = None #Name of the implementatio
+  useGpu = None #Whether that impl uses GPU or not
+
   def __init__(self, vol_bnds, voxel_size:float, useGPU:bool = None):
     """Constructor.
 

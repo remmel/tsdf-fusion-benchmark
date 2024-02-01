@@ -3,11 +3,12 @@ from typing import Tuple
 import numpy as np
 from numba import njit, prange
 
-from fusion import TSDFVolume
+from fusion import TSDFVolumeBase
 
 
-class TSDFVolumeChild(TSDFVolume):
+class TSDFVolumeNestedLoop(TSDFVolumeBase):
   using = "Using nested loop"
+  useGPU = False #Handle only CPU
 
   def prepare(self):
     self.initVoxCoords()
@@ -16,7 +17,7 @@ class TSDFVolumeChild(TSDFVolume):
   def integrate(self, color_im, depth_im, cam_intr, cam_pose, obs_weight):
     im_h, im_w = depth_im.shape
 
-    integrate(color_im, depth_im, np.ascontiguousarray(cam_intr), np.ascontiguousarray(cam_pose), obs_weight,
+    self.integrate_static(color_im, depth_im, np.ascontiguousarray(cam_intr), np.ascontiguousarray(cam_pose), obs_weight,
               self._world_c,
               self._vox_coords,
               self._weight_vol, self._tsdf_vol,  self._color_vol,  # are modified
@@ -29,10 +30,11 @@ class TSDFVolumeChild(TSDFVolume):
   def finalize(self):
     pass
 
-#@njit(parallel=True) prange for z (min: 0.097)
+  #@njit(parallel=True) prange for z (min: 0.097)
 
-@njit(parallel=True)
-def integrate(color_im, depth_im, cam_intr, cam_pose, obs_weight: float,
+  @staticmethod
+  @njit(parallel=True)
+  def integrate_static(color_im, depth_im, cam_intr, cam_pose, obs_weight: float,
         world_c,
         vox_coords,
         weight_vol, tsdf_vol, color_vol,
@@ -41,7 +43,7 @@ def integrate(color_im, depth_im, cam_intr, cam_pose, obs_weight: float,
         vol_dim: Tuple[int, int, int],
         vol_origin: Tuple[float, float, float],
         voxel_size: float,
-):
+  ):
     # Fold RGB color image into a single channel image
     color_im = color_im.astype(np.float32)
     color_im = np.floor(color_im[..., 2] * 256 * 256 + color_im[..., 1] * 256 + color_im[..., 0])

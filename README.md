@@ -26,8 +26,8 @@ python benchmark.py pytorchjit
 python benchmark.py pytorchjit --no-gpu
 
 # pytorchcpp (gpu & cpu)
-python benchmark.py cpptorch
-python benchmark.py cpptorch --no-gpu
+python benchmark.py pytorchcpp
+python benchmark.py pytorchcpp --no-gpu
 
 # TODO, write cudakernel
 # python benchmark.py cpptorchcudakernel
@@ -38,24 +38,24 @@ python benchmark.py numpy
 # nestedloop with numba (prange)
 python benchmark.py nestedloop
 
-python benchmark.py cudanumba
+python benchmark.py numbacuda
 ```
 
 ## Results
 
 
-| Method          | FPS | Min Integration Time | GPU |
-|-----------------|-----|----------------------|-----|
-| PyCuda-AndyZeng |  98 |                0.006 | ✔  |
-| PyTorch         |  35 |                0.014 | ✔  |
-| PyTorch         |   3 |                0.290 | ❌  |
-| JIT PyTorch     |   8 |                0.010 | ✔  |
-| JIT PyTorch     |   3 |                0.298 | ❌  |
-| C++ PyTorch     |  33 |                0.015 | ✔  |
-| C++ PyTorch     |   3 |                0.322 | ✔  |
-| Numpy vect      |   1 |                0.767 | ❌  |
-| nestedloop/Numba|   2 |                0.183 | ❌  |
-| Numba           |  20 |                0.009 | ✔  |
+| Method           | FPS | Min Integration Time | GPU |
+|------------------|-----|----------------------|-----|
+| PyCuda-AndyZeng  |  98 |                0.006 | ✔  |
+| PyTorch          |  35 |                0.014 | ✔  |
+| PyTorch          |   3 |                0.290 | ❌  |
+| PyTorch JIT      |   8 |                0.010 | ✔  |
+| PyTorch JIT      |   3 |                0.298 | ❌  |
+| PyTorch C++      |  33 |                0.015 | ✔  |
+| PyTorch C++      |   3 |                0.322 | ❌  |
+| Numpy vect       |   1 |                0.767 | ❌  |
+| nestedloop/Numba |   2 |                0.183 | ❌  |
+| Numba Cuda       |  20 |                0.009 | ✔  |
 
 
 
@@ -76,10 +76,16 @@ conda install conda-forge::pycuda
 ```
 
 # TODO 
-- Remove/rename the integrate file and function to have static method instead
+- Remove/rename the integrate file
 - Add new implementation
   - Cupy?
   - mix of prange and vectorized numpy array
   - nestedloop w/o numba (really slow)
   - cpp nested loop
   - cpp torch cuda kernel (.cu)
+- Remove implementation selection eg:
+```python
+  args.impl = 'PyTorch'
+  module = importlib.import_module('impls')
+  TSDFVolumeImpl = getattr(module, 'TSDFVolume' + args.impl)
+```

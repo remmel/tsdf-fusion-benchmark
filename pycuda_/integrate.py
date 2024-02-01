@@ -3,15 +3,16 @@ import pycuda.autoinit
 from pycuda.compiler import SourceModule
 import numpy as np
 
-from fusion import TSDFVolume
+from fusion import TSDFVolumeBase
 
 def to_gpu(data):
     data_gpu = cuda.mem_alloc(data.nbytes)
     cuda.memcpy_htod(data_gpu, data)
     return data_gpu
 
-class TSDFVolumeChild(TSDFVolume):
+class TSDFVolumePycuda(TSDFVolumeBase):
     using= 'Using PyCUDA'
+    useGPU = True
 
     def prepare(self):
         self._tsdf_vol_gpu = to_gpu(self._tsdf_vol)

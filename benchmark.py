@@ -15,22 +15,22 @@ if platform.system() == "Darwin":
 TIME_SCALES = {'s': 1, 'ms': 1000, 'us': 1000000}
 
 
-EXAMPLE_CHOICES = ['pycuda', 'pytorch', 'cpptorch', 'pytorchjit', 'cuda', 'numpy', 'nestedloop', 'cudanumba']
+EXAMPLE_CHOICES = ['pycuda', 'pytorch', 'pytorchcpp', 'pytorchjit', 'cuda', 'numpy', 'nestedloop', 'numbacuda']
 def main(args):
-  if args.example == 'cpptorch':
-    from cpptorch.integrate import TSDFVolumeChild
+  if args.example == 'pytorchcpp':
+    from pytorchcpp.integrate import TSDFVolumePyTorchCpp as TSDFVolumeImpl
   elif args.example == 'pytorchjit':
-    from pytorchjit.integrate import TSDFVolumeChild
+    from pytorchjit.integrate import TSDFVolumePytorchJIT as TSDFVolumeImpl
   elif args.example == 'pytorch':
-    from pytorch_.integrate import TSDFVolumeChild
+    from pytorch_.integrate import TSDFVolumePytorch as TSDFVolumeImpl
   elif args.example == 'numpy':
-    from numpy_.integrate import TSDFVolumeChild
+    from numpy_.integrate import TSDFVolumeNumpy as TSDFVolumeImpl
   elif args.example == 'nestedloop':
-    from nestedloop.integrate import TSDFVolumeChild
-  elif args.example == 'cudanumba':
-    from cudanumba.integrate import TSDFVolumeChild
+    from nestedloop.integrate import TSDFVolumeNestedLoop as TSDFVolumeImpl
+  elif args.example == 'numbacuda':
+    from numbacuda.integrate import TSDFVolumeNumbaCuda as TSDFVolumeImpl
   elif args.example == 'pycuda':
-    from pycuda_.integrate import TSDFVolumeChild
+    from pycuda_.integrate import TSDFVolumePycuda as TSDFVolumeImpl
   else:
     raise Exception('unknown example: %s' % args.example)
 
@@ -59,8 +59,8 @@ def main(args):
 
   # Initialize voxel volume
   print("Initializing voxel volume...")
-  tsdf_vol = TSDFVolumeChild(vol_bnds, 0.02, args.gpu)
-  print(tsdf_vol.using)
+  tsdf_vol = TSDFVolumeImpl(vol_bnds, 0.02, args.gpu)
+  print(tsdf_vol.using, '- useGPU:', tsdf_vol.useGPU)
 
   # ======================================================================================================== #
   # Integrate
