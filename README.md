@@ -46,21 +46,23 @@ python benchmark.py numbacuda
 
 | Method           | FPS | Min Integration Time | GPU |
 |------------------|-----|----------------------|-----|
-| PyCuda-AndyZeng  |  98 |                0.006 | ✔  |
-| PyTorch          |  35 |                0.014 | ✔  |
-| PyTorch          |   3 |                0.290 | ❌  |
-| PyTorch JIT      |   8 |                0.010 | ✔  |
-| PyTorch JIT      |   3 |                0.298 | ❌  |
-| PyTorch C++      |  33 |                0.015 | ✔  |
-| PyTorch C++      |   3 |                0.322 | ❌  |
-| Numpy vect       |   1 |                0.767 | ❌  |
-| nestedloop/Numba |   2 |                0.183 | ❌  |
-| Numba Cuda       |  20 |                0.009 | ✔  |
+| PyCuda-AndyZeng  | 98  | 0.006                | ✔  |
+| PyTorch          | 35  | 0.014                | ✔  |
+| PyTorch          | 3   | 0.290                | ❌  |
+| PyTorch JIT      | 8   | 0.010                | ✔  |
+| PyTorch JIT      | 3   | 0.298                | ❌  |
+| PyTorch C++      | 33  | 0.015                | ✔  |
+| PyTorch C++      | 3   | 0.322                | ❌  |
+| Numpy vect       | 1   | 0.767                | ❌  |
+| nestedloop/Numba | 2   | 0.183                | ❌  |
+| Numba Cuda       | 20  | 0.009                | ✔  |
+| Taichi           | 106 | 0.002                | ✔  |
+| Taichi           | 32  | 0.021                | ❌  |
 
 
 
 On some implementation, the 1st integration (or 4 1st integration for JIT Pytorch) takes more times, because the JIT need to compile; that's why the `min` is indicated.
-FPS on only tested on 15 frames; should be done on more.
+FPS on only tested on 15 frames; should be done on more. It includes first run, which is slower (JIT compilation).
 Tested on Laptop with AMD Ryzen 5 5600H and RTX3060 on Ubuntu 22.04
 
 ## Install
