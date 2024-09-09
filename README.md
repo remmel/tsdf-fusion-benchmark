@@ -58,6 +58,8 @@ python benchmark.py numbacuda
 | Numba Cuda       | 20  | 0.009                | ✔  |
 | Taichi           | 106 | 0.002                | ✔  |
 | Taichi           | 32  | 0.021                | ❌  |
+| Tensorflow       | 4   | 0.089                | ✔  |
+| Tensorflow       | 3   | 0.333                | ❌  |
 
 
 
@@ -72,6 +74,8 @@ conda create -n tsdf-benchmark  python=3.10
 conda activate tsdf-benchmark
 conda install pytorch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 pytorch-cuda=12.1 -c pytorch -c nvidia
 conda install conda-forge::pycuda
+pip install taichi -U
+python -m pip install tensorflow[and-cuda]
 
 # conda env export | grep -v "^prefix: " > environment.yml #export to yml
 # conda env create -f environment.yml #import yml

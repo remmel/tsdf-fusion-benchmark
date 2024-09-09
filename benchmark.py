@@ -15,7 +15,7 @@ if platform.system() == "Darwin":
 TIME_SCALES = {'s': 1, 'ms': 1000, 'us': 1000000}
 
 
-EXAMPLE_CHOICES = ['pycuda', 'pytorch', 'pytorchcpp', 'pytorchjit', 'cuda', 'numpy', 'nestedloop', 'numbacuda', 'taichi']
+EXAMPLE_CHOICES = ['pycuda', 'pytorch', 'pytorchcpp', 'pytorchjit', 'cuda', 'numpy', 'nestedloop', 'numbacuda', 'taichi', 'tf']
 def main(args):
   if args.example == 'pytorchcpp':
     from pytorchcpp.integrate import TSDFVolumePyTorchCpp as TSDFVolumeImpl
@@ -33,6 +33,8 @@ def main(args):
     from pycuda_.integrate import TSDFVolumePycuda as TSDFVolumeImpl
   elif args.example == 'taichi':
     from taichi_.integrate import TSDFVolumeTaichi as TSDFVolumeImpl
+  elif args.example == 'tf':
+    from tf_.integrate import TSDFVolumeTf as TSDFVolumeImpl
   else:
     raise Exception('unknown example: %s' % args.example)
 
