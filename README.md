@@ -13,7 +13,7 @@ Download dataset from https://github.com/andyzeng/tsdf-fusion-python
 
 To run the benchmark, use:
 
-```
+```shell
 # cuda kernel code with pyCuda
 python benchmark.py pycuda
 
@@ -39,6 +39,12 @@ python benchmark.py numpy
 python benchmark.py nestedloop
 
 python benchmark.py numbacuda
+
+python benchmark.py taichi
+python benchmark.py taichi --no-gpu
+
+python benchmark.py tf
+python benchmark.py tf --no-gpu
 ```
 
 ## Results
